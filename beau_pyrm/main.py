@@ -3,6 +3,8 @@ import json
 import pathlib
 import dateparser
 import datetime
+import pendulum
+import pandas as pd
 
 # default file locations
 # TODO: make these modifiable
@@ -116,16 +118,26 @@ def add_anniversary(fullname: str, anniversary):
 @app.command()
 def birthdays(days: int = typer.Argument(14)):
     """
-    list all birthdays that happened/will happen within a given number of days
+    list all birthdays will happen within a given number of days
     """
-    #TODO: sort by distance from today
     
-    today = datetime.datetime.today()
-    margin = datetime.timedelta(days = days)
+    today_day_of_year = pendulum.now().day_of_year
+    coming_soon = {} 
+    coming_soon["fullname"] = []
+    coming_soon["birthday"] = []
+    coming_soon["days_until_birthday"] = []
+
     for contact in db:
         if "birthday" in contact:
-            bday_year = dateparser.parse(contact["birthday"])
-            bday_no_year = dateparser.parse(f"{bday_year: %d %B}")
-            # if bday_no_year <= today + margin:
-            if today - margin <= bday_no_year <= today + margin:
-                print(f'{contact["fullname"]} : {contact["birthday"]}')
+            event_day_of_year = pendulum.from_format(contact["birthday"], 'DD MMMM YYYY').day_of_year
+            days_until_event = event_day_of_year - today_day_of_year
+            if 0 <= days_until_event <= days:
+                coming_soon["fullname"].append(contact["fullname"])
+                coming_soon["birthday"].append(contact["birthday"])
+                coming_soon["days_until_birthday"].append(days_until_event)
+
+    if not coming_soon["fullname"]:
+        print(f"No birthdays coming up within {days} days. ")
+    else:
+        bday_df = pd.DataFrame(coming_soon).sort_values("days_until_birthday").reset_index(drop=True)
+        print(bday_df)
