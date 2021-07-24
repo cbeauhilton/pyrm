@@ -2,6 +2,7 @@ import typer
 import json
 import pathlib
 import dateparser
+import datetime
 
 # default file locations
 
@@ -14,7 +15,7 @@ beau_contact = [{
     "firstname": "Beau",
     "lastname": "Hilton",
     "postnominals": "MD",
-    "email": "cbeauhilton@gmail.com",
+    "email_personal": "cbeauhilton@gmail.com",
 }]
 
 app = typer.Typer()
@@ -27,6 +28,11 @@ def callback():
     written in Python, 
     with a JSON default backend.
     """
+
+def date_modified():
+        t = datetime.datetime.now()
+        date_modified = f"{t:%d %B %Y}"
+        return date_modified
 
 # load json db file
 
@@ -58,6 +64,7 @@ def add_name(fullname: str, firstname: str, lastname: str, postnominals: str = "
             "firstname": firstname,
             "lastname": lastname,
             "postnominals": postnominals,
+            "contact_added_date": date_modified(),
             }
 
         typer.echo(d)
@@ -76,42 +83,5 @@ def add_birthday(fullname: str, birthday):
     for dict_ in [x for x in db if x["fullname"] == fullname]:
         t = dateparser.parse(birthday)
         dict_["birthday"] = f"{t:%d %B %Y}"
+        dict_["contact_modified_date"] = date_modified()
     jsondump(db)
-
-
-
-# @app.command()
-# def init(file_location: str = typer.Argument(file_location), file_name: str = typer.Argument(file_name)):
-#     """
-#     Creates a json file if it doesn't exist.
-#     Defaults to "~/.local/pyrm/pyrm.json".
-#     If desired, specify new --file_location and/or --file_name.
-#     Be aware that pathlib does not automatically expand "~".
-#     This will also create a config file at ~/.config/pyrm/pyrmrc.
-#     There is not yet an option to change the location of this config.
-#     """
-#     p = pathlib.Path(file_location)
-#     full_path = p / file_name
-# 
-#     if not os.path.exists(full_path):
-#         p.mkdir(parents=True, exist_ok=True) 
-#         open(full_path, 'w').close()
-# 
-#         os.makedirs(os.path.dirname(default_config_file), exist_ok=True)
-#         with open(default_config_file, "w") as f:
-#             print(f"{full_path}", file=f)
-# 
-#         typer.echo(f"Created empty PyRM file at {full_path}.")
-# 
-#     else:
-#         typer.echo(f"PyRM file already exists at {full_path}.")
-
-# try:
-#     with open(default_config_file) as f:
-#         json_file = f.read()
-# except FileNotFoundError:
-#     print(f"{default_config_file} does not yet exist. Making it now..." )
-#     os.makedirs(os.path.dirname(default_config_file), exist_ok=True)
-#     with open(default_config_file, "w") as f:
-#         print(f"{default_json_path}", file=f)
-
