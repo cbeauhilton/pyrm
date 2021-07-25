@@ -4,7 +4,6 @@ import pathlib
 import dateparser
 import datetime
 import pendulum
-import pandas as pd
 
 # default file locations
 # TODO: make these modifiable
@@ -28,7 +27,7 @@ app = typer.Typer()
 @app.callback()
 def callback():
     """
-    Welcome to PyRM, 
+    Welcome to PyRM,
     a very simple personal relationship manager,
     written in Python.
     """
@@ -112,26 +111,31 @@ def add_anniversary(fullname: str, anniversary):
         dict_["contact_modified_date"] = date_modified()
     jsondump(db)
 
-# TODO: add interactions, maybe in a subdictionary with datetimes for keys
-# TODO: birthdays_coming_up
 
 @app.command()
-def birthdays(days: int = typer.Argument(14)):
+def birthdays(days: int = typer.Argument(365)):
     """
-    list all birthdays will happen within a given number of days
+    List all birthdays within a given number of days, ordered by soonest.
+    Defaults to showing all birthdays.
     """
-    
-    today_day_of_year = pendulum.now().day_of_year
-    coming_soon = {} 
+    import pandas as pd
+
+    today_dt = pendulum.now()
+    coming_soon = {}
     coming_soon["fullname"] = []
     coming_soon["birthday"] = []
     coming_soon["days_until_birthday"] = []
 
     for contact in db:
         if "birthday" in contact:
-            event_day_of_year = pendulum.from_format(contact["birthday"], 'DD MMMM YYYY').day_of_year
-            days_until_event = event_day_of_year - today_day_of_year
-            if 0 <= days_until_event <= days:
+            parsed = dateparser.parse(contact["birthday"])
+            event_dt = pendulum.instance(parsed).set(year=today_dt.year)
+            days_until_event = today_dt.diff(event_dt, False).in_days()
+            if days_until_event < 0:
+                event_dt = event_dt.add(years=1)
+                days_until_event = today_dt.diff(event_dt, False).in_days()
+
+            if days_until_event <= days:
                 coming_soon["fullname"].append(contact["fullname"])
                 coming_soon["birthday"].append(contact["birthday"])
                 coming_soon["days_until_birthday"].append(days_until_event)
@@ -139,5 +143,12 @@ def birthdays(days: int = typer.Argument(14)):
     if not coming_soon["fullname"]:
         print(f"No birthdays coming up within {days} days. ")
     else:
-        bday_df = pd.DataFrame(coming_soon).sort_values("days_until_birthday").reset_index(drop=True)
+        bday_df = (
+            pd.DataFrame(coming_soon)
+            .sort_values("days_until_birthday")
+            .reset_index(drop=True)
+        )
         print(bday_df)
+
+
+# TODO: add interactions (e.g. conversations), maybe in a subdictionary with datetimes for keys
